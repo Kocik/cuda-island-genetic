@@ -3,23 +3,48 @@
 #include <time.h>
 #include <cuda_runtime.h>
 
-const int CHUNKS = 4;
+const int CHUNKS = 64;
 const int GENERATIONS = 10;
 
 
-const int CHECK_VALUES_EVERY = 5;
+const int CHECK_VALUES_EVERY = 50000;
 const int SHOW_ALL_VALUES = 0;
+const int SKIP_CUDA_DEVICE = false;
 
 
-const int ISLANDS_PER_ROW = 16;
-const int GENOME_LENGTH=10;
-const int BLOCKS_PER_ROW = 16;
+const int ISLANDS_PER_ROW = 4;
+const int GENOME_LENGTH=4;
+const int BLOCKS_PER_ROW = 4;
 const int ISLAND_POPULATION=100;
 const int SELECTION_COUNT=80;
 const float MUTATION_CHANCE= 0.8;
 const int ITEMS_MAX_WEIGHT = 5;
 const int ITEMS_MAX_VALUE = 20;
 const int ITEMS_MAX = 20;
+
+bool IsGpuAvailable()
+{
+    int devicesCount;
+  bool skip = SKIP_CUDA_DEVICE;
+    cudaGetDeviceCount(&devicesCount);
+    for(int deviceIndex = 0; deviceIndex < devicesCount; ++deviceIndex)
+    {
+        cudaDeviceProp deviceProperties;
+        cudaGetDeviceProperties(&deviceProperties, deviceIndex);
+        if (deviceProperties.major >= 2
+            && deviceProperties.minor >= 0)
+        {
+      if(skip) {
+        skip = false;
+        continue;
+      }
+            cudaSetDevice(deviceIndex);
+            return true;
+        }
+    }
+
+    return false;
+}
 
 
 
@@ -248,6 +273,11 @@ __global__ void randomizePopulation(curandState_t* states, unsigned char* popula
 int
 main(void)
 {
+	if(!IsGpuAvailable()) {
+        fprintf(stderr, "Cuda Device is not avaliable!\n");
+        exit(EXIT_FAILURE);
+	}
+	
     cudaError_t err = cudaSuccess;
     int ISLANDS = ISLANDS_PER_ROW * ISLANDS_PER_ROW * BLOCKS_PER_ROW * BLOCKS_PER_ROW;
 
